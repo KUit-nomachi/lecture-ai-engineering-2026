@@ -1,10 +1,10 @@
-"""第1回: 素のLLMに1回だけ質問するスクリプト。
+"""第1回: 素のLLMに会話履歴を保ちながら質問するスクリプト。
 
 使い方:
     uv run python -m app.ask "LoRAとは何ですか？"
     uv run python -m app.ask            # 質問を省略すると、講座に固有の質問をする
 
-ツールも会話履歴も持たない「素の」呼び出し。
+ツールは使わず、同じチャットで会話履歴を保ちながら質問する。
 講座に固有のことを聞くと、「分からない」と答えるか、一般論でもっともらしく答える
 （講座の実際とは違う）ことを確かめよう。
 （第3回で、用語集を検索できるエージェントにして改善する）
@@ -24,13 +24,8 @@ from google.genai import types
 DEFAULT_QUESTION = "AIE2026の講座の宿題にある「3レベル」とは何ですか？"
 
 
-def ask(question: str,temperature: float = 1.0) -> str:
-    client = genai.Client(api_key=get_api_key())
-
-    #変更点_課題_基礎
-    config = types.GenerateContentConfig(temperature=temperature)
-    
-    response = client.models.generate_content(model=MODEL, contents=question,config=config,)
+def ask(chat, question: str) -> str:
+    response = chat.send_message(question)
 
     usage = response.usage_metadata
     if usage is not None:
@@ -53,11 +48,24 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    client = genai.Client(api_key=get_api_key())
+    config = types.GenerateContentConfig(temperature=args.temperature)
+    chat = client.chats.create(model=MODEL, config=config)
+
     print(f"[model] {MODEL}")
-    print(f"[質問] {args.question}\n")
     print(f"[temperature] {args.temperature}\n")
     try:
-        print(ask(args.question, temperature=args.temperature))
+        question = args.question
+        while True:
+            print(f"[質問] {question}\n")
+            print(ask(chat, question))
+            try:
+                question = input("\n続けて質問してください（終了: 空行または q）: ").strip()
+            except EOFError:
+                print()
+                break
+            if not question or question.lower() in {"q", "quit", "exit"}:
+                break
     except errors.APIError as e:
         print(api_error_message(e.code, e.message))
         raise SystemExit(1)
