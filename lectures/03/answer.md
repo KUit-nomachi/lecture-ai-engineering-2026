@@ -2,10 +2,38 @@
 
 ## 演習
 
-- 第1回（素のLLM）とエージェントの回答の違い：
-- `--trace` で見えたツール呼び出し（ツール名と引数）：
-- 1つの質問での LLM 呼び出し回数（`requests`）：
+- 第1回（素のLLM）とエージェントの回答の違い：モデルが事前学習した知識をもとに回答するのに対し、エージェントでは、質問内容に応じて用意されたツールを呼び出し、講義資料や用語集などの外部情報を参照して回答した。
+そのため印象にすぎないが、後者の方が回答にブレが少なかったと感じた。
+- `--trace` で見えたツール呼び出し（ツール名と引数）：以下の3つのケースを確認した。質問/ツール名/引数で表記する。
+LoRAとQLoRAの違いは？/search_glossary/{"query": "LoRA"}
+LoRAとQLoRAの違いは？/search_glossary/{"query": "QLoRA"}
+第2回の内容から確認問題を出して/make_quiz/{"lecture": 2}
+第0回の内容から確認問題を出して/make_quiz/{"lecture": 0}
+- 1つの質問での LLM 呼び出し回数（`requests`）：質問/requests/tool/callsで表記する
+LoRAとQLoRAの違いは？/2/2
+第2回の確認問題/2/1
+第0回の確認問題/2/1
+いずれも2回呼び出されていた。
 - 追加したツールと、docstring に書いた説明：
+def make_quiz(lecture: int) -> str:
+    """指定した回の用語から 1つを選び、
+    確認問題と答えを返す。
+    「第2回の確認問題を出して」のように、
+    復習用の問題を求められたときに使う。
+    """
+    glossary = load_glossary()
+    terms = [item for item in glossary if item["lecture"] == lecture]
+
+    if not terms:
+        return f"第{lecture}回の用語はまだありません。"
+
+    selected = random.choice(terms)
+    result = {
+        "question": f"{selected['term']} とは何ですか？",
+        "answer": selected["definition"]
+    }
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
 
 ## 宿題
 
